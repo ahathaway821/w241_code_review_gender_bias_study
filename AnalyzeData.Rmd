@@ -1,0 +1,100 @@
+---
+title: "Final Project: Data Analysis"
+author: "Experiments and Causality"
+output: 
+    github_document: default
+    pdf_document: default
+knit: (function(inputFile, encoding) {
+  rmarkdown::render(
+    inputFile, encoding = encoding,
+    output_format = c('github_document', 'pdf_document')) 
+    })
+---
+
+# Import Libraries
+
+```{r, message=FALSE}
+library(data.table)
+library(stargazer)
+library(dplyr)
+library(foreign)
+library(knitr)
+library(lmtest)
+library(sandwich)
+```
+
+# Load Data
+
+First, we need to convert some string fields explicitly into factor fields
+```{r}
+d_raw <- fread('./data_v1_processed.csv')
+d_raw[,gender:=as.factor(gender)]
+d_raw[,gender_shown:=as.factor(gender_shown)]
+d_raw[,age:=as.factor(age)]
+d_raw[,years_programming:=as.factor(years_programming)]
+d_raw[,years_javascript:=as.factor(years_javascript)]
+d_raw[,num_crs_per_week:=as.factor(num_crs_per_week)]
+d_raw[,education:=as.factor(education)]
+d_raw[,employment:=as.factor(employment)]
+```
+
+# EDA
+First, we get some columns of interest.
+```{r}
+numeric_covariates = c('pct_men') 
+numeric_responses = c('code_quality', 'num_bugs', 'num_quality', 'num_texts')
+numeric_variables = c(numeric_covariates, numeric_responses)
+covariates_of_interest = c('gender', 'age', 'years_programming', 'years_javascript', 
+                           'num_crs_per_week', 'education', 'employment', numeric_covariates)
+variables_of_interest = c(covariates_of_interest, 'gender_shown', numeric_responses)
+```
+
+## Check for Missing Values
+We have some missing values in our data. Notably two rows that we don't have any covariate information for. This was likely a fluke in the collection system.
+
+```{r}
+d_raw_covariates_missing = d_raw[,..covariates_of_interest] == ''
+d_raw_covariates_missing[is.na(d_raw_covariates_missing)] = TRUE
+
+d = d_raw[!(rowSums(d_raw_covariates_missing) == 8)]
+```
+
+## Randomization Check
+Next, we check that our randomization worked. To do this, we do a summary of our covariates split by the treatment (TODO: we need to do something more systematic here - perhaps a regression)
+```{r}
+# summary of each by treatment - should have a more systematic way of checking covariates
+summary(d[gender_shown == 'Male', ..covariates_of_interest])
+summary(d[gender_shown == 'Female', ..covariates_of_interest])
+```
+
+Doing somethign slightly more systematic, we use the covariates to predict gender to see if there is any covariate imbalance.
+```{r}
+lm_covariates = d[,lm(gender_shown == "Male" ~ gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+summary(lm_covariates)
+```
+
+We have a high p-value, indicating that we have confidence that the covariates are balanced.
+
+## Histogram of numeric fields
+```{r}
+par(mfrow=c(2,2))
+for (cov in numeric_covariates) {
+  d_raw[,hist(get(cov), main=paste('Histogram of ', cov), xlab=cov)]  
+}
+```
+
+# Regression
+```{r}
+lm1 = d[,lm(num_lines ~ gender_shown)]
+summary(lm1)
+
+lm2 = d[,lm(code_quality ~ gender_shown)]
+summary(lm2)
+
+lm3 = d[,lm(num_lines ~ gender_equal)]
+summary(lm3)
+
+lm4 = d[,lm(code_quality ~ gender_equal)]
+summary(lm4)
+```
+

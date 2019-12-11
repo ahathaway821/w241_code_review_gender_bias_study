@@ -1,0 +1,265 @@
+---
+title: "241Project.Rmd"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+#read in the data
+raw_data <- fread('pull_requests_v3_December 7, 2019_14.36.csv')
+
+nrows <- nrow(raw_data)
+ncols <- ncol(raw_data)
+
+cat("The number of rows in the data is: ", nrows,"\n")
+cat("The number of columns in the data is: ", ncols,"\n")
+
+#the first 3 lines are header actually, for example column1 has the following in the first 3 rows: StartDate, StartDate and {"ImportId":"startDate","timeZone":"America/Denver"}
+head(raw_data$StartDate,3)
+
+#check the first couple of rows to see what we got: the first three lines belong to header conceptually
+head(raw_data,3) 
+
+#Given that header is spread across first 3 lines, we will merge them into one and give it a name of better description
+# remove rows in r by row number
+clean_data <- raw_data[-c(1:2),] 
+head(clean_data,3)
+```
+```{r}
+#column renaming
+names(clean_data)[1] <- "dt_start"
+names(clean_data)[2] <- "dt_end"
+names(clean_data)[3] <- "response_type"
+names(clean_data)[4] <- "ip_address"
+names(clean_data)[5] <- "progress"
+names(clean_data)[6] <- "duration"
+names(clean_data)[7] <- "flg_finished"
+names(clean_data)[8] <- "dt_recorded"
+names(clean_data)[9] <- "id_response"
+names(clean_data)[10] <- "recipient_last_name"
+names(clean_data)[11] <- "recipient_first_name"
+names(clean_data)[12] <- "recipient_email"
+names(clean_data)[13] <- "external_ref"
+names(clean_data)[14] <- "latitude"
+names(clean_data)[15] <- "longitude"
+names(clean_data)[16] <- "distr_chanel"
+names(clean_data)[17] <- "user_language"
+names(clean_data)[18] <- "sex"
+names(clean_data)[19] <- "gender_identificaton_survey_participant"
+names(clean_data)[20] <- "age"
+names(clean_data)[21] <- "software_eng_experience"
+names(clean_data)[22] <- "java_script_experience"
+names(clean_data)[23] <- "code_review_frequency"
+names(clean_data)[24] <- "education_level"
+names(clean_data)[25] <- "workplace_male_pct"
+names(clean_data)[26] <- "work_survey_participant"
+names(clean_data)[27] <- "employer"
+names(clean_data)[1] <- "dt_start"
+names(clean_data)[2] <- "dt_end"
+names(clean_data)[3] <- "response_type"
+names(clean_data)[4] <- "ip_address"
+names(clean_data)[5] <- "progress"
+names(clean_data)[6] <- "duration"
+names(clean_data)[7] <- "flg_finished"
+names(clean_data)[8] <- "dt_recorded"
+names(clean_data)[9] <- "id_response"
+names(clean_data)[10] <- "recipient_last_name"
+names(clean_data)[11] <- "recipient_first_name"
+names(clean_data)[12] <- "recipient_email"
+names(clean_data)[13] <- "external_ref"
+names(clean_data)[14] <- "latitude"
+names(clean_data)[15] <- "longitude"
+names(clean_data)[16] <- "distr_chanel"
+names(clean_data)[17] <- "user_language"
+names(clean_data)[18] <- "sex"
+names(clean_data)[19] <- "gender_identificaton_survey_participant"
+names(clean_data)[20] <- "age"
+names(clean_data)[21] <- "software_eng_experience"
+names(clean_data)[22] <- "java_script_experience"
+names(clean_data)[23] <- "code_review_frequency"
+names(clean_data)[24] <- "education_level"
+names(clean_data)[25] <- "workplace_male_pct"
+names(clean_data)[26] <- "work_survey_participant"
+names(clean_data)[27] <- "employer"
+names(clean_data)[28] <- "comment_1_scope"
+names(clean_data)[29] <- "comment_1_type"
+names(clean_data)[30] <- "comment_1_text"
+names(clean_data)[31] <- "comment_2_scope"
+names(clean_data)[32] <- "comment_2_type"
+names(clean_data)[33] <- "comment_2_text"
+names(clean_data)[34] <- "comment_3_scope"
+names(clean_data)[35] <- "comment_3_type"
+names(clean_data)[36] <- "comment_3_text"
+names(clean_data)[37] <- "comment_4_scope"
+names(clean_data)[38] <- "comment_4_type"
+names(clean_data)[39] <- "comment_4_text"
+names(clean_data)[40] <- "comment_5_scope"
+names(clean_data)[41] <- "comment_5_type"
+names(clean_data)[42] <- "comment_5_text"
+names(clean_data)[43] <- "comment_6_scope"
+names(clean_data)[44] <- "comment_6_type"
+names(clean_data)[45] <- "comment_6_text"
+names(clean_data)[46] <- "comment_7_scope"
+names(clean_data)[47] <- "comment_7_type"
+names(clean_data)[48] <- "comment_7_text"
+names(clean_data)[49] <- "comment_8_scope"
+names(clean_data)[50] <- "comment_8_type"
+names(clean_data)[51] <- "comment_8_text"
+names(clean_data)[52] <- "comment_9_scope"
+names(clean_data)[53] <- "comment_9_type"
+names(clean_data)[54] <- "comment_9_text"
+names(clean_data)[55] <- "comment_10_scope"
+names(clean_data)[56] <- "comment_10_type"
+names(clean_data)[57] <- "comment_10_text"
+names(clean_data)[58] <- "comment_11_scope"
+names(clean_data)[59] <- "comment_11_type"
+names(clean_data)[60] <- "comment_11_text"
+names(clean_data)[61] <- "comment_12_scope"
+names(clean_data)[62] <- "comment_12_type"
+names(clean_data)[63] <- "comment_12_text"
+names(clean_data)[64] <- "comment_13_scope"
+names(clean_data)[65] <- "comment_13_type"
+names(clean_data)[66] <- "comment_13_text"
+names(clean_data)[67] <- "comment_14_scope"
+names(clean_data)[68] <- "comment_14_type"
+names(clean_data)[69] <- "comment_14_text"
+names(clean_data)[70] <- "comment_15_scope"
+names(clean_data)[71] <- "comment_15_type"
+names(clean_data)[72] <- "comment_15_text"
+names(clean_data)[73] <- "comment_16_scope"
+names(clean_data)[74] <- "comment_16_type"
+names(clean_data)[75] <- "comment_16_text"
+names(clean_data)[76] <- "comment_17_scope"
+names(clean_data)[77] <- "comment_17_type"
+names(clean_data)[78] <- "comment_17_text"
+names(clean_data)[79] <- "comment_18_scope"
+names(clean_data)[80] <- "comment_18_type"
+names(clean_data)[81] <- "comment_18_text"
+names(clean_data)[82] <- "comment_19_scope"
+names(clean_data)[83] <- "comment_19_type"
+names(clean_data)[84] <- "comment_19_text"
+names(clean_data)[85] <- "comment_20_scope"
+names(clean_data)[86] <- "comment_20_type"
+names(clean_data)[87] <- "comment_20_text"
+names(clean_data)[88] <- "code_quality_score"
+names(clean_data)[89] <- "amy_comment_1_scope"
+names(clean_data)[90] <- "amy_comment_1_type"
+names(clean_data)[91] <- "amy_comment_1_text"
+names(clean_data)[92] <- "amy_comment_2_scope"
+names(clean_data)[93] <- "amy_comment_2_type"
+names(clean_data)[94] <- "amy_comment_2_text"
+names(clean_data)[95] <- "amy_comment_3_scope"
+names(clean_data)[96] <- "amy_comment_3_type"
+names(clean_data)[97] <- "amy_comment_3_text"
+names(clean_data)[98] <- "amy_comment_4_scope"
+names(clean_data)[99] <- "amy_comment_4_type"
+names(clean_data)[100] <- "amy_comment_4_text"
+names(clean_data)[101] <- "amy_comment_5_scope"
+names(clean_data)[102] <- "amy_comment_5_type"
+names(clean_data)[103] <- "amy_comment_5_text"
+names(clean_data)[104] <- "amy_comment_6_scope"
+names(clean_data)[105] <- "amy_comment_6_type"
+names(clean_data)[106] <- "amy_comment_6_text"
+names(clean_data)[107] <- "amy_comment_7_scope"
+names(clean_data)[108] <- "amy_comment_7_type"
+names(clean_data)[109] <- "amy_comment_7_text"
+names(clean_data)[110] <- "amy_comment_8_scope"
+names(clean_data)[111] <- "amy_comment_8_type"
+names(clean_data)[112] <- "amy_comment_8_text"
+names(clean_data)[113] <- "amy_comment_9_scope"
+names(clean_data)[114] <- "amy_comment_9_type"
+names(clean_data)[115] <- "amy_comment_9_text"
+names(clean_data)[116] <- "amy_comment_10_scope"
+names(clean_data)[117] <- "amy_comment_10_type"
+names(clean_data)[118] <- "amy_comment_10_text"
+names(clean_data)[119] <- "amy_comment_11_scope"
+names(clean_data)[120] <- "amy_comment_11_type"
+names(clean_data)[121] <- "amy_comment_11_text"
+names(clean_data)[122] <- "amy_comment_12_scope"
+names(clean_data)[123] <- "amy_comment_12_type"
+names(clean_data)[124] <- "amy_comment_12_text"
+names(clean_data)[125] <- "amy_comment_13_scope"
+names(clean_data)[126] <- "amy_comment_13_type"
+names(clean_data)[127] <- "amy_comment_13_text"
+names(clean_data)[128] <- "amy_comment_14_scope"
+names(clean_data)[129] <- "amy_comment_14_type"
+names(clean_data)[130] <- "amy_comment_14_text"
+names(clean_data)[131] <- "amy_comment_15_scope"
+names(clean_data)[132] <- "amy_comment_15_type"
+names(clean_data)[133] <- "amy_comment_15_text"
+names(clean_data)[134] <- "amy_comment_16_scope"
+names(clean_data)[135] <- "amy_comment_16_type"
+names(clean_data)[136] <- "amy_comment_16_text"
+names(clean_data)[137] <- "amy_comment_17_scope"
+names(clean_data)[138] <- "amy_comment_17_type"
+names(clean_data)[139] <- "amy_comment_17_text"
+names(clean_data)[140] <- "amy_comment_18_scope"
+names(clean_data)[141] <- "amy_comment_18_type"
+names(clean_data)[142] <- "amy_comment_18_text"
+names(clean_data)[143] <- "amy_comment_19_scope"
+names(clean_data)[144] <- "amy_comment_19_type"
+names(clean_data)[145] <- "amy_comment_19_text"
+names(clean_data)[146] <- "amy_comment_20_scope"
+names(clean_data)[147] <- "amy_comment_20_type"
+names(clean_data)[148] <- "amy_comment_20_text"
+names(clean_data)[149] <- "amy_code_quality_score"
+names(clean_data)[150] <- "application_function"
+names(clean_data)[151] <- "gender_of_the_coder"
+names(clean_data)[152] <- "coder_employer"
+names(clean_data)[153] <- "coder_mame"
+names(clean_data)[154] <- "participant_email"
+names(clean_data)[155] <- "survey_version_shown"
+names(clean_data)[156] <- "new_field"
+```
+
+
+```{r}
+#quick check on one survey record
+t(head(clean_data,1))
+```
+
+
+
+
+
+```{r}
+#Extract Tom and Amy data to separate dataframes for easier merge later
+tom <- subset(clean_data, survey_version_shown == "Male", select=c(dt_start, dt_end, response_type, ip_address, progress, duration, flg_finished, dt_recorded, id_response, recipient_last_name, recipient_first_name, recipient_email, external_ref, latitude, longitude, distr_chanel, user_language, sex, gender_identificaton_survey_participant, age, software_eng_experience, java_script_experience, code_review_frequency, education_level, workplace_male_pct, work_survey_participant, employer, comment_1_scope, comment_1_type, comment_1_text, comment_2_scope, comment_2_type, comment_2_text, comment_3_scope, comment_3_type, comment_3_text, comment_4_scope, comment_4_type, comment_4_text, comment_5_scope, comment_5_type, comment_5_text, comment_6_scope, comment_6_type, comment_6_text, comment_7_scope, comment_7_type, comment_7_text, comment_8_scope, comment_8_type, comment_8_text, comment_9_scope, comment_9_type, comment_9_text, comment_10_scope, comment_10_type, comment_10_text, comment_11_scope, comment_11_type, comment_11_text, comment_12_scope, comment_12_type, comment_12_text, comment_13_scope, comment_13_type, comment_13_text, comment_14_scope, comment_14_type, comment_14_text, comment_15_scope, comment_15_type, comment_15_text, comment_16_scope, comment_16_type, comment_16_text, comment_17_scope, comment_17_type, comment_17_text, comment_18_scope, comment_18_type, comment_18_text, comment_19_scope, comment_19_type, comment_19_text, comment_20_scope, comment_20_type, comment_20_text, code_quality_score, application_function, gender_of_the_coder, coder_employer, coder_mame, participant_email, survey_version_shown))
+t(head(tom,1))
+
+write.csv(tom,"tom.csv", row.names = TRUE)
+
+amy <- subset(clean_data, survey_version_shown == "Female",select=c(dt_start, dt_end, response_type, ip_address, progress, duration, flg_finished, dt_recorded, id_response, recipient_last_name, recipient_first_name, recipient_email, external_ref, latitude, longitude, distr_chanel, user_language, sex, gender_identificaton_survey_participant, age, software_eng_experience, java_script_experience, code_review_frequency, education_level, workplace_male_pct, work_survey_participant, employer, amy_comment_1_scope, amy_comment_1_type, amy_comment_1_text, amy_comment_2_scope, amy_comment_2_type, amy_comment_2_text, amy_comment_3_scope, amy_comment_3_type, amy_comment_3_text, amy_comment_4_scope, amy_comment_4_type, amy_comment_4_text, amy_comment_5_scope, amy_comment_5_type, amy_comment_5_text, amy_comment_6_scope, amy_comment_6_type, amy_comment_6_text, amy_comment_7_scope, amy_comment_7_type, amy_comment_7_text, amy_comment_8_scope, amy_comment_8_type, amy_comment_8_text, amy_comment_9_scope, amy_comment_9_type, amy_comment_9_text, amy_comment_10_scope, amy_comment_10_type, amy_comment_10_text, amy_comment_11_scope, amy_comment_11_type, amy_comment_11_text, amy_comment_12_scope, amy_comment_12_type, amy_comment_12_text, amy_comment_13_scope, amy_comment_13_type, amy_comment_13_text, amy_comment_14_scope, amy_comment_14_type, amy_comment_14_text, amy_comment_15_scope, amy_comment_15_type, amy_comment_15_text, amy_comment_16_scope, amy_comment_16_type, amy_comment_16_text, amy_comment_17_scope, amy_comment_17_type, amy_comment_17_text, amy_comment_18_scope, amy_comment_18_type, amy_comment_18_text, amy_comment_19_scope, amy_comment_19_type, amy_comment_19_text, amy_comment_20_scope, amy_comment_20_type, amy_comment_20_text, amy_code_quality_score, application_function, gender_of_the_coder, coder_employer, coder_mame, participant_email, survey_version_shown))
+t(head(amy,1))
+write.csv(amy,"amy.csv", row.names = TRUE)
+
+
+
+```
+
+```{r}
+#merge Tom and Amy responses
+final <- rbind(tom, amy,use.names=FALSE)
+write.csv(final,"final.csv", row.names = TRUE)
+
+```
+
+```{r}
+#we seem to have picked up some columns that carry no value
+#count number of unique values in each column
+
+column_value_range <-final %>% summarise_all(n_distinct)
+col_stats <-t(column_value_range)
+
+#this idenetified a bunch of system variables that have one unique value and add no valuee to the data or our analysis
+#response_type, recipient_last_name, recipient_first_name, recipient_email,external_ref,distr_chanel,user_language, new_field 
+#we will removee them.
+data<- subset(final, select=-c(response_type,recipient_last_name, recipient_first_name, recipient_email,external_ref,distr_chanel, user_language))
+t(head(data,1))
+#this is our final data set - data.csv
+write.csv(data,"data.csv", row.names = TRUE)
+```
