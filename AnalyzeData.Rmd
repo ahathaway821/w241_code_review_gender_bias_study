@@ -27,7 +27,7 @@ library(sandwich)
 
 First, we need to convert some string fields explicitly into factor fields
 ```{r}
-d_raw <- fread('./data_v1_processed.csv')
+d_raw <- fread('./data_v2_processed.csv')
 d_raw[,gender:=as.factor(gender)]
 d_raw[,gender_shown:=as.factor(gender_shown)]
 d_raw[,age:=as.factor(age)]
@@ -46,7 +46,7 @@ numeric_responses = c('code_quality', 'num_bugs', 'num_quality', 'num_texts')
 numeric_variables = c(numeric_covariates, numeric_responses)
 covariates_of_interest = c('gender', 'age', 'years_programming', 'years_javascript', 
                            'num_crs_per_week', 'education', 'employment', numeric_covariates)
-variables_of_interest = c(covariates_of_interest, 'gender_shown', numeric_responses)
+variables_of_interest = c(covariates_of_interest, 'gender_shown', numeric_responses, 'duration')
 ```
 
 ## Check for Missing Values
@@ -57,6 +57,7 @@ d_raw_covariates_missing = d_raw[,..covariates_of_interest] == ''
 d_raw_covariates_missing[is.na(d_raw_covariates_missing)] = TRUE
 
 d = d_raw[!(rowSums(d_raw_covariates_missing) == 8)]
+d[,is_male_treatment:=as.integer(d$gender_shown=='Male')]
 ```
 
 ## Randomization Check
@@ -96,5 +97,25 @@ summary(lm3)
 
 lm4 = d[,lm(code_quality ~ gender_equal)]
 summary(lm4)
+```
+```{r}
+lm1 = d[,lm(`Duration (in seconds)` ~ gender_shown + years_programming)]
+summary(lm1)
+
+lm2 = d[,lm(num_quality ~ gender_shown + years_programming)]
+summary(lm2)
+
+lm3 = d[,lm(num_bugs ~ gender_shown + years_programming)]
+summary(lm3)
+
+lm4 = d[,lm(num_quality/num_lines ~ gender_shown + years_programming)]
+summary(lm4)
+
+lm5 = d[,lm(num_bugs/num_lines ~ gender_shown + years_programming)]
+summary(lm5)
+
+```
+```{r}
+hist(d$is_male_treatment)
 ```
 
