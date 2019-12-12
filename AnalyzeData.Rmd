@@ -49,6 +49,12 @@ covariates_of_interest = c('gender', 'age', 'years_programming', 'years_javascri
 variables_of_interest = c(covariates_of_interest, 'gender_shown', numeric_responses, 'duration')
 ```
 
+# Check for equal treatment distribution
+
+```{r}
+table(d$is_male_treatment)
+```
+
 ## Check for Missing Values
 We have some missing values in our data. Notably two rows that we don't have any covariate information for. This was likely a fluke in the collection system.
 
@@ -84,6 +90,10 @@ for (cov in numeric_covariates) {
 }
 ```
 
+# EDA for Outcome Measures
+
+
+
 # Regression
 ```{r}
 lm1 = d[,lm(num_lines ~ gender_shown)]
@@ -116,6 +126,38 @@ summary(lm5)
 
 ```
 ```{r}
-hist(d$is_male_treatment)
+hist(d$code_quality, main = "Histogram of Code Quality", xlab="Code Quality", ylab="Frequency")
+hist(d$num_lines, main = "Histogram of Number of Code Comments", xlab="Number of Code Comments", ylab="Frequency")
+hist(d$num_quality, main = "Histogram of Number of Opinion/Quality Code Comments", xlab="Number of Opinion/Quality Code Comments", ylab="Frequency")
+```
+```{r}
+# Here we can see many of our respondants failed to give a single code comment
+paste('Distribution of Number of Comments')
+table(d$num_lines)
+
+paste('Distribution of Number of Quality Comments')
+table(d$num_quality)
+
+```
+```{r}
+d_trim = d[d$num_lines != 0,]
+table(d_trim$num_lines)
+```
+```{r}
+lm1 = d_trim[,lm(num_lines ~ gender_shown)]
+summary(lm1)
+
+lm2 = d_trim[,lm(code_quality ~ gender_shown)]
+summary(lm2)
+
+lm3 = d_trim[,lm(num_lines ~ gender_equal)]
+summary(lm3)
+
+lm4 = d_trim[,lm(code_quality ~ gender_equal)]
+summary(lm4)
+```
+```{r}
+# Did people who left 0 comments rate the code better?
+hist(d[num_lines==1, code_quality], main = "Histogram of Code Quality w/ No Comments", xlab="Code Quality", ylab="Frequency")
 ```
 
