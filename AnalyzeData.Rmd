@@ -39,13 +39,19 @@ d_raw[,years_programming:=relevel(factor(years_programming, levels=years_program
 d_raw[,years_javascript:=relevel(factor(years_javascript, levels=years_javascript_levels), "0 years")]
 d_raw[,num_crs_per_week:=relevel(as.factor(num_crs_per_week), "Never")]
 d_raw[,education:=relevel(factor(education, levels=education_levels), "Less than high school")]
-d_raw[,employment:=relevel(as.factor(employment), "Unemployed / Student")]
+d_raw[,employment:=relevel(as.factor(employment), "Unemployed / Student")]s
+```
+
+For ease of evaluation, let's also add a variable: ratio of men to women in the workplace.
+```{r}
+d_raw[,ratio_men_to_women:=pct_men/(100-pct_men)]
+d_raw[ratio_men_to_women == Inf,ratio_men_to_women := 100]
 ```
 
 # EDA
 First, we get some columns of interest.
 ```{r}
-numeric_covariates = c('pct_men') 
+numeric_covariates = c('pct_men', 'ratio_men_to_women') 
 numeric_responses = c('code_quality', 'num_bugs', 'num_quality', 'num_texts', 'percent_bugs', 'percent_quality', 'Duration (in seconds)')
 numeric_variables = c(numeric_covariates, numeric_responses)
 attn_variables = c('correct_app', 'correct_company', 'correct_gender', 'correct_name')
@@ -229,6 +235,16 @@ getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:employmentEmpl
 ```{r}
 lm = d[,lm(code_quality ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:pct_men'),]
+```
+
+```{r}
+lm = d[,lm(code_quality ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*ratio_men_to_women)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:ratio_men_to_women'),]
+```
+
+```{r}
+lm = d[,lm(code_quality ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*log(ratio_men_to_women))]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:log(ratio_men_to_women)'),]
 ```
 
 ## Percent Bugs
