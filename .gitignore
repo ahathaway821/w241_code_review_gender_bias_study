@@ -39,3 +39,6 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+# raw data files
+pull_requests_v3*.csv

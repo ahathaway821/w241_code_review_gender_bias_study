@@ -21,143 +21,318 @@ library(foreign)
 library(knitr)
 library(lmtest)
 library(sandwich)
+library(ggplot2)
 ```
 
 # Load Data
 
 First, we need to convert some string fields explicitly into factor fields
 ```{r}
-d_raw <- fread('./data_v2_processed.csv')
-d_raw[,gender:=as.factor(gender)]
-d_raw[,gender_shown:=as.factor(gender_shown)]
-d_raw[,age:=as.factor(age)]
-d_raw[,years_programming:=as.factor(years_programming)]
-d_raw[,years_javascript:=as.factor(years_javascript)]
-d_raw[,num_crs_per_week:=as.factor(num_crs_per_week)]
-d_raw[,education:=as.factor(education)]
-d_raw[,employment:=as.factor(employment)]
+years_programming_levels = c("0 years", "<1 year", "1-2 years", "3-5 years", "5-10 years", "10-15 years", "15-20 years", "NA")
+years_javascript_levels = c("0 years", "<1 year", "1-2 years", "3-5 years", "5-10 years", "10-15 years", "15-20 years", "NA")
+education_levels = c("Less than high school", "High school graduate", "Some college", "4 year degree", "Professional degree")
+d_raw <- fread('./data_v3_processed.csv')
+d_raw[,gender:=relevel(as.factor(gender),"Male")]
+d_raw[,gender_shown:=relevel(as.factor(gender_shown),"Male")]
+d_raw[,age:=relevel(as.factor(age),"18 - 24")]
+d_raw[,years_programming:=relevel(factor(years_programming, levels=years_programming_levels), "0 years")]
+d_raw[,years_javascript:=relevel(factor(years_javascript, levels=years_javascript_levels), "0 years")]
+d_raw[,num_crs_per_week:=relevel(as.factor(num_crs_per_week), "Never")]
+d_raw[,education:=relevel(factor(education, levels=education_levels), "Less than high school")]
+d_raw[,employment:=relevel(as.factor(employment), "Unemployed / Student")]
 ```
 
 # EDA
 First, we get some columns of interest.
 ```{r}
 numeric_covariates = c('pct_men') 
-numeric_responses = c('code_quality', 'num_bugs', 'num_quality', 'num_texts')
+numeric_responses = c('code_quality', 'num_bugs', 'num_quality', 'num_texts', 'percent_bugs', 'percent_quality', 'Duration (in seconds)')
 numeric_variables = c(numeric_covariates, numeric_responses)
+attn_variables = c('correct_app', 'correct_company', 'correct_gender', 'correct_name')
 covariates_of_interest = c('gender', 'age', 'years_programming', 'years_javascript', 
                            'num_crs_per_week', 'education', 'employment', numeric_covariates)
-variables_of_interest = c(covariates_of_interest, 'gender_shown', numeric_responses, 'duration')
-```
-
-# Check for equal treatment distribution
-
-```{r}
-table(d$is_male_treatment)
+variables_of_interest = c(covariates_of_interest, 'gender_shown', numeric_responses)
 ```
 
 ## Check for Missing Values
-We have some missing values in our data. Notably two rows that we don't have any covariate information for. This was likely a fluke in the collection system.
+We have some missing values in our data. Notably years programming and years javascript, where we forgot to make the questions required. Given this, we will put them into their own "NA" category.
 
 ```{r}
-d_raw_covariates_missing = d_raw[,..covariates_of_interest] == ''
-d_raw_covariates_missing[is.na(d_raw_covariates_missing)] = TRUE
+summary(d_raw)
+d_raw[is.na(years_programming), years_programming := "NA"]
+d_raw[is.na(years_javascript),  years_javascript:= "NA"]
+d_raw[,years_programming:=relevel(factor(years_programming, levels=years_programming_levels), "0 years")]
+d_raw[,years_javascript:=relevel(factor(years_javascript, levels=years_javascript_levels), "0 years")]
+d = d_raw
+```
 
-d = d_raw[!(rowSums(d_raw_covariates_missing) == 8)]
-d[,is_male_treatment:=as.integer(d$gender_shown=='Male')]
+## Covariate Analysis
+```{r}
+for (covariate in covariates_of_interest) {
+  print(ggplot(d, aes_string(x = covariate)) + 
+    geom_bar() + ggtitle(paste("Distribution of", covariate)) + xlab(covariate))
+}
+summary(d[,..covariates_of_interest])
+```
+
+Things that were not good: years_programming and years_javascript had some NAs because we did not make them required.
+
+## Check Attention Checks
+```{r}
+summary(d[,..attn_variables])
+summary(d[gender_shown=='Female',..attn_variables])
+summary(d[gender_shown=='Male',..attn_variables])
+ggplot(d, aes(x = factor(correct_gender), fill=gender_shown)) + 
+  geom_bar(position = position_dodge()) + ggtitle("Gender Attention Check") + xlab("Remembered Gender?")
+ggplot(d, aes(x = factor(correct_company), fill=gender_shown)) + 
+  geom_bar(position = position_dodge()) + ggtitle("Company Attention Check") + xlab("Remembered Company?")
+ggplot(d, aes(x = factor(correct_app), fill=gender_shown)) + 
+  geom_bar(position = position_dodge()) + ggtitle("App Attention Check") + xlab("Remembered App?")
+ggplot(d, aes(x = factor(correct_name), fill=gender_shown)) + 
+  geom_bar(position = position_dodge()) + ggtitle("Name Attention Check") + xlab("Remembered Name?")
 ```
 
 ## Randomization Check
-Next, we check that our randomization worked. To do this, we do a summary of our covariates split by the treatment (TODO: we need to do something more systematic here - perhaps a regression)
+Next, we check that our randomization worked. To do this, we do a summary of our covariates split by the treatment
 ```{r}
 # summary of each by treatment - should have a more systematic way of checking covariates
-summary(d[gender_shown == 'Male', ..covariates_of_interest])
-summary(d[gender_shown == 'Female', ..covariates_of_interest])
+for (covariate in covariates_of_interest) {
+  print(ggplot(d, aes_string(x = covariate, fill="gender_shown")) + 
+    geom_bar() + ggtitle(paste("Distribution of", covariate)) + xlab(covariate))
+}
 ```
 
-Doing somethign slightly more systematic, we use the covariates to predict gender to see if there is any covariate imbalance.
+Doing something slightly more systematic, we use the covariates to predict gender to see if there is any covariate imbalance.
+
 ```{r}
 lm_covariates = d[,lm(gender_shown == "Male" ~ gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 summary(lm_covariates)
 ```
 
-We have a high p-value, indicating that we have confidence that the covariates are balanced.
+We have a decently high p-value, indicating that we have confidence that the covariates are balanced.
 
 ## Histogram of numeric fields
 ```{r}
 par(mfrow=c(2,2))
-for (cov in numeric_covariates) {
+for (cov in numeric_variables) {
   d_raw[,hist(get(cov), main=paste('Histogram of ', cov), xlab=cov)]  
 }
 ```
 
-# EDA for Outcome Measures
+# Results by Gender
+```{r}
+hist(d[gender_shown=="Female", num_lines], col=rgb(0,0,1,0.10), xlim=c(0,20), ylim=c(0,10), breaks=20, main="Histogram of Number of Comments by Gender Shown", xlab="Number of Comments")
+hist(d[gender_shown=="Male", num_lines], col=rgb(1,0,0,0.10), xlim=c(0,20), ylim=c(0,10), breaks=20, add=T)
+legend(x=14, y=8, legend=c("Female Treatment", "Male Treatment"),
+       col=c("blue", "red"), lty=1, cex=0.8)
+```
 
+```{r}
+hist(d[gender_shown=="Female", code_quality], col=rgb(0,0,1,1/4), xlim=c(1,10), ylim=c(0,10), breaks=10, main="Histogram of Code Quality by Gender Shown", xlab="Code Quality (1-10)")
+hist(d[gender_shown=="Male", code_quality], col=rgb(1,0,0,1/4), xlim=c(1,10), ylim=c(0,10), breaks=10, add=T)
+legend(x=7, y=8, legend=c("Female Treatment", "Male Treatment"),
+       col=c("blue", "red"), lty=1, cex=0.8)
+```
 
+```{r}
+for (covariate in numeric_variables) {
+  print(ggplot(d, aes_string(x = covariate, fill="gender_shown")) + 
+    geom_bar() + ggtitle(paste("Distribution of", covariate)) + xlab(covariate))
+}
+```
 
 # Regression
+
 ```{r}
-lm1 = d[,lm(num_lines ~ gender_shown)]
-summary(lm1)
-
-lm2 = d[,lm(code_quality ~ gender_shown)]
-summary(lm2)
-
-lm3 = d[,lm(num_lines ~ gender_equal)]
-summary(lm3)
-
-lm4 = d[,lm(code_quality ~ gender_equal)]
-summary(lm4)
-```
-```{r}
-lm1 = d[,lm(`Duration (in seconds)` ~ gender_shown + years_programming)]
-summary(lm1)
-
-lm2 = d[,lm(num_quality ~ gender_shown + years_programming)]
-summary(lm2)
-
-lm3 = d[,lm(num_bugs ~ gender_shown + years_programming)]
-summary(lm3)
-
-lm4 = d[,lm(num_quality/num_lines ~ gender_shown + years_programming)]
-summary(lm4)
-
-lm5 = d[,lm(num_bugs/num_lines ~ gender_shown + years_programming)]
-summary(lm5)
-
-```
-```{r}
-hist(d$code_quality, main = "Histogram of Code Quality", xlab="Code Quality", ylab="Frequency")
-hist(d$num_lines, main = "Histogram of Number of Code Comments", xlab="Number of Code Comments", ylab="Frequency")
-hist(d$num_quality, main = "Histogram of Number of Opinion/Quality Code Comments", xlab="Number of Opinion/Quality Code Comments", ylab="Frequency")
-```
-```{r}
-# Here we can see many of our respondants failed to give a single code comment
-paste('Distribution of Number of Comments')
-table(d$num_lines)
-
-paste('Distribution of Number of Quality Comments')
-table(d$num_quality)
-
-```
-```{r}
-d_trim = d[d$num_lines != 0,]
-table(d_trim$num_lines)
-```
-```{r}
-lm1 = d_trim[,lm(num_lines ~ gender_shown)]
-summary(lm1)
-
-lm2 = d_trim[,lm(code_quality ~ gender_shown)]
-summary(lm2)
-
-lm3 = d_trim[,lm(num_lines ~ gender_equal)]
-summary(lm3)
-
-lm4 = d_trim[,lm(code_quality ~ gender_equal)]
-summary(lm4)
-```
-```{r}
-# Did people who left 0 comments rate the code better?
-hist(d[num_lines==1, code_quality], main = "Histogram of Code Quality w/ No Comments", xlab="Code Quality", ylab="Frequency")
+getRobustCoefTest <- function(r) {
+  coeftest(r, vcov = vcovHC(lm, type="HC"))
+}
 ```
 
+## Number of Comments
+```{r}
+lm = d[,lm(num_lines ~ gender_shown)]
+getRobustCoefTest(lm)
+```
+
+```{r}
+lm = d[,lm(num_lines ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)['gender_shownFemale',]
+```
+
+### Interaction Effects
+```{r}
+lm = d[,lm(num_lines ~ gender_shown + gender_shown*gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:genderFemale'),]
+```
+
+```{r}
+lm = d[,lm(num_lines ~ gender_shown + gender + age + gender_shown*years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_programming3-5 years',
+                        'gender_shownFemale:years_programming5-10 years', 'gender_shownFemale:years_programming10-15 years'),]
+```
+
+```{r}
+lm = d[,lm(num_lines ~ gender_shown + gender + age + gender_shown*years_javascript + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_javascript1-2 years',
+                        'gender_shownFemale:years_javascript3-5 years',
+                        'gender_shownFemale:years_javascript5-10 years', 
+                        'gender_shownFemale:years_javascript10-15 years'),]
+```
+
+```{r}
+lm = d[,lm(num_lines ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + gender_shown*employment + pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:employmentEmployed by:'),]
+```
+
+```{r}
+lm = d[,lm(num_lines ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:pct_men'),]
+```
+
+## Code Quality
+```{r}
+lm = d[,lm(code_quality ~ gender_shown)]
+getRobustCoefTest(lm)
+```
+
+```{r}
+lm = d[,lm(code_quality ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)['gender_shownFemale',]
+```
+
+### Interaction Effects
+```{r}
+lm = d[,lm(code_quality ~ gender_shown + gender_shown*gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:genderFemale'),]
+```
+
+```{r}
+lm = d[,lm(code_quality ~ gender_shown + gender + age + gender_shown*years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_programming3-5 years',
+                        'gender_shownFemale:years_programming5-10 years', 'gender_shownFemale:years_programming10-15 years'),]
+```
+
+```{r}
+lm = d[,lm(code_quality ~ gender_shown + gender + age + gender_shown*years_javascript + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_javascript1-2 years',
+                        'gender_shownFemale:years_javascript3-5 years',
+                        'gender_shownFemale:years_javascript5-10 years', 
+                        'gender_shownFemale:years_javascript10-15 years'),]
+```
+
+```{r}
+lm = d[,lm(code_quality ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + gender_shown*employment + pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:employmentEmployed by:'),]
+```
+
+```{r}
+lm = d[,lm(code_quality ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:pct_men'),]
+```
+
+## Percent Bugs
+```{r}
+lm = d[,lm(percent_bugs ~ gender_shown)]
+getRobustCoefTest(lm)
+```
+
+```{r}
+lm = d[,lm(percent_bugs ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)['gender_shownFemale',]
+```
+
+### Interaction Effects
+```{r}
+lm = d[,lm(percent_bugs ~ gender_shown + gender_shown*gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:genderFemale'),]
+```
+
+```{r}
+lm = d[,lm(percent_bugs ~ gender_shown + gender + age + gender_shown*years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_programming3-5 years',
+                        'gender_shownFemale:years_programming5-10 years', 'gender_shownFemale:years_programming10-15 years'),]
+```
+
+```{r}
+lm = d[,lm(percent_bugs ~ gender_shown + gender + age + gender_shown*years_javascript + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_javascript1-2 years',
+                        'gender_shownFemale:years_javascript3-5 years',
+                        'gender_shownFemale:years_javascript5-10 years', 
+                        'gender_shownFemale:years_javascript10-15 years'),]
+```
+
+```{r}
+lm = d[,lm(percent_bugs ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + gender_shown*employment + pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:employmentEmployed by:'),]
+```
+
+```{r}
+lm = d[,lm(percent_bugs ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:pct_men'),]
+```
+
+## Time Take
+```{r}
+lm = d[,lm(`Duration (in seconds)` ~ gender_shown)]
+getRobustCoefTest(lm)
+```
+
+```{r}
+lm = d[,lm(`Duration (in seconds)` ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)['gender_shownFemale',]
+```
+
+### Interaction Effects
+```{r}
+lm = d[,lm(`Duration (in seconds)` ~ gender_shown + gender_shown*gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:genderFemale'),]
+```
+
+```{r}
+lm = d[,lm(`Duration (in seconds)` ~ gender_shown + gender + age + gender_shown*years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_programming3-5 years',
+                        'gender_shownFemale:years_programming5-10 years', 'gender_shownFemale:years_programming10-15 years'),]
+```
+
+```{r}
+lm = d[,lm(`Duration (in seconds)` ~ gender_shown + gender + age + gender_shown*years_javascript + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_javascript1-2 years',
+                        'gender_shownFemale:years_javascript3-5 years',
+                        'gender_shownFemale:years_javascript5-10 years', 
+                        'gender_shownFemale:years_javascript10-15 years'),]
+```
+
+```{r}
+lm = d[,lm(`Duration (in seconds)` ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + gender_shown*employment + pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:employmentEmployed by:'),]
+```
+
+```{r}
+lm = d[,lm(`Duration (in seconds)` ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:pct_men'),]
+```
+
+## Are certain people more likely to remember gender?
+```{r}
+lm = d[,lm(correct_gender ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)
+```
+
+## Are certain people more likely to remember name?
+```{r}
+lm = d[,lm(correct_name ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)
+```
+
+## Placebo: are certain people more likely to remember app name?
+```{r}
+lm = d[,lm(correct_app ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)
+```
+
+## Placebo: are certain people more likely to remember company name?
+```{r}
+lm = d[,lm(correct_company ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)
+```
