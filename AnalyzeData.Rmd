@@ -108,7 +108,7 @@ Next, we check that our randomization worked. To do this, we do a summary of our
 # summary of each by treatment - should have a more systematic way of checking covariates
 for (covariate in covariates_of_interest) {
   print(ggplot(d, aes_string(x = covariate, fill="gender_shown")) + 
-    geom_bar() + ggtitle(paste("Distribution of", covariate)) + xlab(covariate))
+    geom_bar(position='dodge') + ggtitle(paste("Distribution of", covariate)) + xlab(covariate))
 }
 ```
 
@@ -139,11 +139,23 @@ legend(x=7, y=20, legend=c("Negative Comments", "Positive Comments"),
 
 # Results by Gender
 ```{r}
-hist(d[gender_shown=="Female", num_lines], col=rgb(0,0,1,0.10), xlim=c(0,20), ylim=c(0,10), breaks=20, main="Histogram of Number of Comments by Gender Shown", xlab="Number of Comments")
-hist(d[gender_shown=="Male", num_lines], col=rgb(1,0,0,0.10), xlim=c(0,20), ylim=c(0,10), breaks=20, add=T)
-legend(x=14, y=8, legend=c("Female Treatment", "Male Treatment"),
-       col=c("blue", "red"), lty=1, cex=0.8)
+hist(d[gender_shown=="Female", num_lines], col=rgb(0,0,1,.25), xlim=c(0,20), ylim=c(0,10), breaks=20, main="Histogram of Number of Comments by Gender Shown", xlab="Number of Comments")
+hist(d[gender_shown=="Male", num_lines], col=rgb(1,0,0,.25), xlim=c(0,20), ylim=c(0,10), breaks=20, add=T)
+legend(x=14, y=8, legend=c("Female Treatment", "Male Treatment", "Overlap"),
+       col=c(rgb(0,0,1,0.5), rgb(1,0,0,0.5), col=rgb(1,0,1,.5)), lty=1, cex=0.8)
+
+
+print(ggplot(d, aes_string(x = "num_lines", fill="gender_shown")) + 
+  geom_bar(position='dodge') + ggtitle(paste("Distribution of Code Comments")) + xlab("Number of Comments"))
 ```
+
+```{r}
+hist(d[gender_shown=="Female", num_quality], col=rgb(0,0,1,.25), xlim=c(0,20), ylim=c(0,10), breaks=15, main="Histogram of Number of Quality/Opinion Comments by Gender Shown", xlab="Number of Comments")
+hist(d[gender_shown=="Male", num_quality], col=rgb(1,0,0,.25), xlim=c(0,20), ylim=c(0,10), breaks=15, add=T)
+legend(x=14, y=8, legend=c("Female Treatment", "Male Treatment", "Overlap"),
+       col=c(rgb(0,0,1,0.5), rgb(1,0,0,0.5), col=rgb(1,0,1,.5)), lty=1, cex=0.8)
+```
+
 
 ```{r}
 hist(d[gender_shown=="Female", code_quality], col=rgb(0,0,1,1/4), xlim=c(1,10), ylim=c(0,10), breaks=10, main="Histogram of Code Quality by Gender Shown", xlab="Code Quality (1-10)")
@@ -154,10 +166,15 @@ legend(x=7, y=8, legend=c("Female Treatment", "Male Treatment"),
 
 ```{r}
 for (covariate in numeric_variables) {
+  if (covariate == "Duration (in seconds)") {
+    next
+  }
   print(ggplot(d, aes_string(x = covariate, fill="gender_shown")) + 
-    geom_bar() + ggtitle(paste("Distribution of", covariate)) + xlab(covariate))
+    geom_bar(position='dodge') + ggtitle(paste("Distribution of", covariate)) + xlab(covariate))
 }
+
 ```
+
 
 # Regression
 
@@ -240,14 +257,20 @@ getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_javascri
 ```
 
 ```{r}
-lm = d[,lm(code_quality ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + gender_shown*employment + pct_men)]
-getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:employmentEmployed by:'),]
+#lm = d[,lm(code_quality ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + gender_shown*employment + pct_men)]
+#getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:employmentEmployed by:'),]
 ```
 
 ```{r}
 lm = d[,lm(code_quality ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:pct_men'),]
 ```
+
+```{r}
+stargazer(lm, se = list(getRobustCoefTest(lm)), type="text")
+
+```
+
 
 ```{r}
 lm = d[,lm(code_quality ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*ratio_men_to_women)]
