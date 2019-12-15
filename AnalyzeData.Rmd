@@ -22,7 +22,19 @@ library(knitr)
 library(lmtest)
 library(sandwich)
 library(ggplot2)
+library(pwr)
 ```
+
+```{r}
+# Power Analysis
+u=8
+v=100-u-1
+f2=.3/(1-.3)
+sig = .01
+
+pwr.f2.test(u = u, v = v, f2 = f2, sig.level = 0.01)
+```
+
 
 # Load Data
 
@@ -179,11 +191,7 @@ for (covariate in numeric_variables) {
 # Regression
 ```{r}
 get_se_robust <- function(model) { 
-  ## takes a model and computes the robust standard error
-  require(sandwich, quietly = TRUE)
-  
-  ses <- sqrt(diag(vcovHC(model)))
-  
+  ses <- sqrt(diag(vcovHC(model, type="HC")))
   return(ses)
 }
 ```
@@ -235,9 +243,139 @@ getRobustCoefTest(lm)[c('gender_shownFemale', 'is_reviewer_femaleTRUE'),]
 ```
 
 ```{r}
-lm = d[,lm(num_lines ~ gender_shown + is_reviewer_female + age + gender_shown*years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+lm = d[,lm(num_lines ~ gender_shown + is_reviewer_female + age + gender_shown*years_programming + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_programming3-5 years',
                         'gender_shownFemale:years_programming5-10 years', 'gender_shownFemale:years_programming10-15 years'),]
+summary(lm)
+
+```
+
+```{r}
+
+d[, years_programming_1_2_years:=as.integer(years_programming == '1-2 years')]
+d[, years_programming_3_5_years:=as.integer(years_programming == '3-5 years')]
+d[, years_programming_5_10_years:=as.integer(years_programming == '5-10 years')]
+
+d[, num_crs_per_week_0_1:=as.integer(num_crs_per_week == '0-1 times per week')]
+d[, num_crs_per_week_1_3:=as.integer(num_crs_per_week == '1-3 times per week')]
+d[, num_crs_per_week_4_7:=as.integer(num_crs_per_week == '4-7 times per week')]
+d[, num_crs_per_week_7_plus:=as.integer(num_crs_per_week == 'More than 7 times per week')]
+
+d[, years_javascript_1_3:=as.integer(years_javascript == '1-2 years')]
+d[, years_javascript_3_5:=as.integer(years_javascript == '3-5 years')]
+d[, years_javascript_5_10:=as.integer(years_javascript == '5-10 years')]
+d[, years_javascript_10_15:=as.integer(years_javascript == '10-15 years')]
+
+d[, has_javascript_exp:=as.integer(grepl('-', years_javascript) )]
+d[, is_female_treatment:=as.integer(gender_shown == 'Female')]
+
+
+lm_lines = d[,lm(num_lines ~ gender_shown + is_reviewer_female 
+          + years_programming_1_2_years 
+          + years_programming_3_5_years 
+          + years_programming_5_10_years 
+           + pct_men
+           + num_crs_per_week_1_3
+           + num_crs_per_week_4_7
+           + num_crs_per_week_7_plus
+           + years_javascript_1_3
+           + years_javascript_3_5
+           + years_javascript_5_10
+           + years_javascript_10_15
+           )]
+#getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_programming3-5 years',
+#                        'gender_shownFemale:years_programming5-10 years', 'gender_shownFemale:years_programming10-15 years'),]
+
+
+se_num_lines_w_cov = list(get_se_robust(lm_s))
+stargazer(lm_s, se=se_num_lines_w_cov, type="text")
+
+anova(lm, lm_s)
+table(d$treat)
+```
+
+```{r}
+# Pruned bins
+lm_lines = d[,lm(num_lines ~ gender_shown + is_reviewer_female 
+          + gender_equal
+          + years_programming_1_2_years 
+          + years_programming_3_5_years 
+          + years_programming_5_10_years 
+           + pct_men
+           + num_crs_per_week_1_3
+           + num_crs_per_week_4_7
+           + num_crs_per_week_7_plus
+           + years_javascript_1_3
+           + years_javascript_3_5
+           + years_javascript_5_10
+           + years_javascript_10_15
+          
+           )]
+
+lm_quality_lines = d[,lm(num_quality ~ gender_shown + is_reviewer_female 
+          + gender_equal
+          + years_programming_1_2_years 
+          + years_programming_3_5_years 
+          + years_programming_5_10_years 
+           + pct_men
+           + num_crs_per_week_1_3
+           + num_crs_per_week_4_7
+           + num_crs_per_week_7_plus
+           + years_javascript_1_3
+           + years_javascript_3_5
+           + years_javascript_5_10
+           + years_javascript_10_15
+           )]
+
+lm_code_quality = d[,lm(code_quality ~ gender_shown + is_reviewer_female 
+          + gender_equal
+          + years_programming_1_2_years 
+          + years_programming_3_5_years 
+          + years_programming_5_10_years 
+           + pct_men
+           + num_crs_per_week_1_3
+           + num_crs_per_week_4_7
+           + num_crs_per_week_7_plus
+           + years_javascript_1_3
+           + years_javascript_3_5
+           + years_javascript_5_10
+           + years_javascript_10_15
+           )]
+
+
+se_w_cov = list(get_se_robust(lm_lines), get_se_robust(lm_quality_lines), get_se_robust(lm_code_quality))
+stargazer(lm_lines, lm_quality_lines, lm_code_quality, se=se_w_cov, type="text")
+```
+
+```{r}
+# Including all NA responses
+lm_lines = d[,lm(num_lines ~ gender_shown + is_reviewer_female 
+          + gender_equal
+          + years_programming
+          + pct_men
+          + num_crs_per_week
+          + years_javascript
+           )]
+
+lm_quality_lines = d[,lm(num_quality ~ gender_shown + is_reviewer_female 
+          + gender_equal
+          + years_programming
+          + pct_men
+          + num_crs_per_week
+          + years_javascript
+           )]
+
+lm_code_quality = d[,lm(code_quality ~ gender_shown + is_reviewer_female 
+          + gender_equal
+          + years_programming
+          + pct_men
+          + num_crs_per_week
+          + years_javascript
+           )]
+
+
+se_w_cov = list(get_se_robust(lm_lines), get_se_robust(lm_quality_lines), get_se_robust(lm_code_quality))
+stargazer(lm_lines, lm_quality_lines, lm_code_quality, se=se_w_cov, type="text")
 ```
 
 ```{r}
