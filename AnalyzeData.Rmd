@@ -165,6 +165,39 @@ for (covariate in numeric_variables) {
 
 
 # Regression
+```{r}
+get_se_robust <- function(model) { 
+  ## takes a model and computes the robust standard error
+  require(sandwich, quietly = TRUE)
+  
+  ses <- sqrt(diag(vcovHC(model)))
+  
+  return(ses)
+}
+```
+
+```{r}
+# Simplest Regressions for Primary Outcome Measures
+lm_lines = d[,lm(num_lines ~ gender_shown)]
+lm_q_lines = d[,lm(num_quality ~ gender_shown)]
+lm_code_quality = d[,lm(code_quality ~ gender_shown)]
+
+se_basic = list(get_se_robust(lm_lines), get_se_robust(lm_q_lines), get_se_robust(lm_code_quality))
+stargazer(lm_lines, lm_q_lines, lm_code_quality, se=se_basic, type="text")
+```
+
+```{r}
+# Regressions for Primary Outcome Measures with Reviewer Gender
+d[,is_reviewer_female := gender == 'Female']
+
+lm_lines = d[,lm(num_lines ~ gender_shown + is_reviewer_female)]
+lm_q_lines = d[,lm(num_quality ~ gender_shown + is_reviewer_female)]
+lm_code_quality = d[,lm(code_quality ~ gender_shown + is_reviewer_female)]
+
+se_basic_w_gender = list(get_se_robust(lm_lines), get_se_robust(lm_q_lines), get_se_robust(lm_code_quality))
+stargazer(lm_lines, lm_q_lines, lm_code_quality, se=se_basic_w_gender, type="text")
+```
+
 
 ```{r}
 getRobustCoefTest <- function(r) {
@@ -179,24 +212,24 @@ getRobustCoefTest(lm)
 ```
 
 ```{r}
-lm = d[,lm(num_lines ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+lm = d[,lm(num_lines ~ gender_shown + is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 getRobustCoefTest(lm)['gender_shownFemale',]
 ```
 
 ### Interaction Effects
 ```{r}
-lm = d[,lm(num_lines ~ gender_shown + gender_shown*gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
-getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:genderFemale'),]
+lm = d[,lm(num_lines ~ gender_shown + gender_shown*is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+getRobustCoefTest(lm)[c('gender_shownFemale', 'is_reviewer_femaleTRUE'),]
 ```
 
 ```{r}
-lm = d[,lm(num_lines ~ gender_shown + gender + age + gender_shown*years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+lm = d[,lm(num_lines ~ gender_shown + is_reviewer_female + age + gender_shown*years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_programming3-5 years',
                         'gender_shownFemale:years_programming5-10 years', 'gender_shownFemale:years_programming10-15 years'),]
 ```
 
 ```{r}
-lm = d[,lm(num_lines ~ gender_shown + gender + age + gender_shown*years_javascript + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+lm = d[,lm(num_lines ~ gender_shown + is_reviewer_female + age + gender_shown*years_javascript + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_javascript1-2 years',
                         'gender_shownFemale:years_javascript3-5 years',
                         'gender_shownFemale:years_javascript5-10 years', 
@@ -204,12 +237,12 @@ getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_javascri
 ```
 
 ```{r}
-lm = d[,lm(num_lines ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + gender_shown*employment + pct_men)]
+lm = d[,lm(num_lines ~ gender_shown + is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + gender_shown*employment + pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:employmentEmployed by:'),]
 ```
 
 ```{r}
-lm = d[,lm(num_lines ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*pct_men)]
+lm = d[,lm(num_lines ~ gender_shown + is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:pct_men'),]
 ```
 
@@ -220,24 +253,24 @@ getRobustCoefTest(lm)
 ```
 
 ```{r}
-lm = d[,lm(code_quality ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+lm = d[,lm(code_quality ~ gender_shown + is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 getRobustCoefTest(lm)['gender_shownFemale',]
 ```
 
 ### Interaction Effects
 ```{r}
-lm = d[,lm(code_quality ~ gender_shown + gender_shown*gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+lm = d[,lm(code_quality ~ gender_shown + gender_shown*is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:genderFemale'),]
 ```
 
 ```{r}
-lm = d[,lm(code_quality ~ gender_shown + gender + age + gender_shown*years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+lm = d[,lm(code_quality ~ gender_shown + is_reviewer_female + age + gender_shown*years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_programming3-5 years',
                         'gender_shownFemale:years_programming5-10 years', 'gender_shownFemale:years_programming10-15 years'),]
 ```
 
 ```{r}
-lm = d[,lm(code_quality ~ gender_shown + gender + age + gender_shown*years_javascript + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+lm = d[,lm(code_quality ~ gender_shown + is_reviewer_female + age + gender_shown*years_javascript + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_javascript1-2 years',
                         'gender_shownFemale:years_javascript3-5 years',
                         'gender_shownFemale:years_javascript5-10 years', 
@@ -250,23 +283,25 @@ getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_javascri
 ```
 
 ```{r}
-lm = d[,lm(code_quality ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*pct_men)]
+lm = d[,lm(code_quality ~ gender_shown + is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:pct_men'),]
 ```
 
-```{r}
-stargazer(lm, se = list(getRobustCoefTest(lm)), type="text")
 
+```{r}
+#lm$vcovHC_ <- vcovHC(lm)
+#stargazer(lm, se=list(sqrt(diag(lm$vcovHC_))), type="text")
+stargazer(lm, type="text")
 ```
 
 
 ```{r}
-lm = d[,lm(code_quality ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*ratio_men_to_women)]
+lm = d[,lm(code_quality ~ gender_shown + is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*ratio_men_to_women)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:ratio_men_to_women'),]
 ```
 
 ```{r}
-lm = d[,lm(code_quality ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*log(ratio_men_to_women))]
+lm = d[,lm(code_quality ~ gender_shown + is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*log(ratio_men_to_women))]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:log(ratio_men_to_women)'),]
 ```
 
@@ -277,24 +312,24 @@ getRobustCoefTest(lm)
 ```
 
 ```{r}
-lm = d[,lm(percent_bugs ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+lm = d[,lm(percent_bugs ~ gender_shown + is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 getRobustCoefTest(lm)['gender_shownFemale',]
 ```
 
 ### Interaction Effects
 ```{r}
-lm = d[,lm(percent_bugs ~ gender_shown + gender_shown*gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+lm = d[,lm(percent_bugs ~ gender_shown + gender_shown*is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:genderFemale'),]
 ```
 
 ```{r}
-lm = d[,lm(percent_bugs ~ gender_shown + gender + age + gender_shown*years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+lm = d[,lm(percent_bugs ~ gender_shown + is_reviewer_female + age + gender_shown*years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_programming3-5 years',
                         'gender_shownFemale:years_programming5-10 years', 'gender_shownFemale:years_programming10-15 years'),]
 ```
 
 ```{r}
-lm = d[,lm(percent_bugs ~ gender_shown + gender + age + gender_shown*years_javascript + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+lm = d[,lm(percent_bugs ~ gender_shown + is_reviewer_female + age + gender_shown*years_javascript + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_javascript1-2 years',
                         'gender_shownFemale:years_javascript3-5 years',
                         'gender_shownFemale:years_javascript5-10 years', 
@@ -302,12 +337,12 @@ getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_javascri
 ```
 
 ```{r}
-lm = d[,lm(percent_bugs ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + gender_shown*employment + pct_men)]
+lm = d[,lm(percent_bugs ~ gender_shown + is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + gender_shown*employment + pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:employmentEmployed by:'),]
 ```
 
 ```{r}
-lm = d[,lm(percent_bugs ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*pct_men)]
+lm = d[,lm(percent_bugs ~ gender_shown + is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:pct_men'),]
 ```
 
@@ -318,24 +353,24 @@ getRobustCoefTest(lm)
 ```
 
 ```{r}
-lm = d[,lm(`Duration (in seconds)` ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+lm = d[,lm(`Duration (in seconds)` ~ gender_shown + is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 getRobustCoefTest(lm)['gender_shownFemale',]
 ```
 
 ### Interaction Effects
 ```{r}
-lm = d[,lm(`Duration (in seconds)` ~ gender_shown + gender_shown*gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+lm = d[,lm(`Duration (in seconds)` ~ gender_shown + gender_shown*is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:genderFemale'),]
 ```
 
 ```{r}
-lm = d[,lm(`Duration (in seconds)` ~ gender_shown + gender + age + gender_shown*years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+lm = d[,lm(`Duration (in seconds)` ~ gender_shown + is_reviewer_female + age + gender_shown*years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_programming3-5 years',
                         'gender_shownFemale:years_programming5-10 years', 'gender_shownFemale:years_programming10-15 years'),]
 ```
 
 ```{r}
-lm = d[,lm(`Duration (in seconds)` ~ gender_shown + gender + age + gender_shown*years_javascript + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+lm = d[,lm(`Duration (in seconds)` ~ gender_shown + is_reviewer_female + age + gender_shown*years_javascript + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_javascript1-2 years',
                         'gender_shownFemale:years_javascript3-5 years',
                         'gender_shownFemale:years_javascript5-10 years', 
@@ -343,35 +378,35 @@ getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:years_javascri
 ```
 
 ```{r}
-lm = d[,lm(`Duration (in seconds)` ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + gender_shown*employment + pct_men)]
+lm = d[,lm(`Duration (in seconds)` ~ gender_shown + is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + gender_shown*employment + pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:employmentEmployed by:'),]
 ```
 
 ```{r}
-lm = d[,lm(`Duration (in seconds)` ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*pct_men)]
+lm = d[,lm(`Duration (in seconds)` ~ gender_shown + is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + employment + gender_shown*pct_men)]
 getRobustCoefTest(lm)[c('gender_shownFemale', 'gender_shownFemale:pct_men'),]
 ```
 
 ## Are certain people more likely to remember gender?
 ```{r}
-lm = d[,lm(correct_gender ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+lm = d[,lm(correct_gender ~ gender_shown + is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 getRobustCoefTest(lm)
 ```
 
 ## Are certain people more likely to remember name?
 ```{r}
-lm = d[,lm(correct_name ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+lm = d[,lm(correct_name ~ gender_shown + is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 getRobustCoefTest(lm)
 ```
 
 ## Placebo: are certain people more likely to remember app name?
 ```{r}
-lm = d[,lm(correct_app ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+lm = d[,lm(correct_app ~ gender_shown + is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 getRobustCoefTest(lm)
 ```
 
 ## Placebo: are certain people more likely to remember company name?
 ```{r}
-lm = d[,lm(correct_company ~ gender_shown + gender + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
+lm = d[,lm(correct_company ~ gender_shown + is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
 getRobustCoefTest(lm)
 ```
