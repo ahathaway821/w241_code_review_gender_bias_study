@@ -287,10 +287,10 @@ lm_lines = d[,lm(num_lines ~ gender_shown + is_reviewer_female
 #                        'gender_shownFemale:years_programming5-10 years', 'gender_shownFemale:years_programming10-15 years'),]
 
 
-se_num_lines_w_cov = list(get_se_robust(lm_s))
-stargazer(lm_s, se=se_num_lines_w_cov, type="text")
+se_num_lines_w_cov = list(get_se_robust(lm_lines))
+stargazer(lm_lines, se=se_num_lines_w_cov, type="text")
 
-anova(lm, lm_s)
+anova(lm, lm_lines)
 table(d$treat)
 ```
 
@@ -352,7 +352,7 @@ stargazer(lm_lines, lm_quality_lines, lm_code_quality, se=se_w_cov, type="text")
 lm_lines = d[,lm(num_lines ~ gender_shown + is_reviewer_female 
           + gender_equal
           + years_programming
-          + pct_men
+          + ratio_men_to_women
           + num_crs_per_week
           + years_javascript
            )]
@@ -360,7 +360,7 @@ lm_lines = d[,lm(num_lines ~ gender_shown + is_reviewer_female
 lm_quality_lines = d[,lm(num_quality ~ gender_shown + is_reviewer_female 
           + gender_equal
           + years_programming
-          + pct_men
+          + ratio_men_to_women
           + num_crs_per_week
           + years_javascript
            )]
@@ -368,7 +368,7 @@ lm_quality_lines = d[,lm(num_quality ~ gender_shown + is_reviewer_female
 lm_code_quality = d[,lm(code_quality ~ gender_shown + is_reviewer_female 
           + gender_equal
           + years_programming
-          + pct_men
+          + ratio_men_to_women
           + num_crs_per_week
           + years_javascript
            )]
@@ -377,6 +377,39 @@ lm_code_quality = d[,lm(code_quality ~ gender_shown + is_reviewer_female
 se_w_cov = list(get_se_robust(lm_lines), get_se_robust(lm_quality_lines), get_se_robust(lm_code_quality))
 stargazer(lm_lines, lm_quality_lines, lm_code_quality, se=se_w_cov, type="text")
 ```
+
+```{r}
+lm_pos_comments = d[,lm(num_negative_comments ~ gender_shown + is_reviewer_female 
+          + is_female_treatment * is_reviewer_female
+          + gender_equal
+          + years_programming_1_2_years 
+          + years_programming_3_5_years 
+          + years_programming_5_10_years 
+           + pct_men
+           + num_crs_per_week_1_3
+           + num_crs_per_week_4_7
+           + num_crs_per_week_7_plus
+           + years_javascript_1_3
+           + years_javascript_3_5
+           + years_javascript_5_10
+           + years_javascript_10_15
+           )]
+
+se_w_cov_sent = list(get_se_robust(lm_pos_comments))
+stargazer(lm_pos_comments, se=se_w_cov_sent, type="text")
+
+```
+
+```{r}
+lm_neg_comments_gender_int = d[,lm(num_negative_comments ~ gender_shown + is_reviewer_female + gender_shown*is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + employment + ratio_men_to_women)]
+
+lm_neg_comments_pct_men_int = d[,lm(num_negative_comments ~ gender_shown + gender_shown*ratio_men_to_women + ratio_men_to_women + is_reviewer_female + age + years_programming + years_javascript + num_crs_per_week + education + employment)]
+
+se_w_cov_sent = list(get_se_robust(lm_neg_comments_gender_int), get_se_robust(lm_neg_comments_pct_men_int))
+stargazer(lm_neg_comments_gender_int, lm_neg_comments_pct_men_int, se=se_w_cov_sent, type="text")
+
+```
+
 
 ```{r}
 lm = d[,lm(num_lines ~ gender_shown + is_reviewer_female + age + gender_shown*years_javascript + years_programming + years_javascript + num_crs_per_week + education + employment + pct_men)]
